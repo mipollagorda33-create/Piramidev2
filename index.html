@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Pirámide de Cefa - Ultimate 2.0</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;700&display=swap');
+        
+        :root { 
+            --bg-dark: #0f172a; 
+            --panel-bg: rgba(30, 41, 59, 0.75); 
+            --primary: #ef4444; 
+            --primary-hover: #f87171; 
+            --accent: #3b82f6; 
+            --text-main: #f8fafc; 
+            --glow: 0 0 15px 5px rgba(239, 68, 68, 0.6); 
+            --font-game: 'Fredoka', sans-serif; 
+            --font-ui: 'Nunito', sans-serif; 
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); }
+        
+        body { 
+            background: radial-gradient(circle at top, #1e293b, #020617);
+            background-attachment: fixed;
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: flex; flex-direction: column; overflow-x: hidden; padding-top: 40px; 
+        }
+        
+        h1, h2, h3 { font-family: var(--font-game); }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: -webkit-linear-gradient(45deg, #ef4444, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+            margin-bottom: 20px;
+        }
+
+        #event-banner { 
+            position: fixed; top: 0; left: 0; width: 100%; 
+            background: linear-gradient(90deg, #8b5cf6, #4c1d95); 
+            color: white; text-align: center; padding: 10px; font-weight: bold; 
+            font-family: var(--font-game); font-size: 1.1rem; z-index: 100; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none; 
+        }
+        
+        #host-controls { 
+            background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); 
+            border-radius: 12px; padding: 15px; margin: 10px auto; text-align: center; 
+            max-width: 600px; display: none; backdrop-filter: blur(5px);
+        }
+        .host-badge { color: gold; font-weight: bold; font-family: var(--font-game); letter-spacing: 1px; }
+        
+        #cefa-container { position: fixed; top: 60px; right: 15px; display: flex; align-items: flex-start; gap: 10px; z-index: 50; pointer-events: none; }
+        #cefa-avatar { 
+            width: 75px; height: 75px; border: 3px solid #fff; border-radius: 50%; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); animation: float 3s ease-in-out infinite; 
+            overflow: hidden; background: #fff; 
+        }
+        #cefa-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        #cefa-bubble { 
+            background: rgba(255,255,255,0.95); color: #0f172a; padding: 12px 15px; 
+            border-radius: 15px; border-top-right-radius: 2px; font-weight: bold; 
+            max-width: 200px; box-shadow: 0 8px 15px rgba(0,0,0,0.4); 
+            font-family: var(--font-game); transform: scale(0); transform-origin: top right; 
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        #cefa-bubble.show { transform: scale(1); }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        
+        .screen { display: none; padding: 15px; width: 100%; max-width: 1000px; margin: 0 auto; flex-grow: 1; }
+        .screen.active { display: flex; flex-direction: column; }
+        .panel { 
+            background: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 20px; 
+            padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
+            border: 1px solid rgba(255,255,255,0.1); margin: 0 auto; 
+            width: 100%; max-width: 650px; text-align: center; 
+        }
+        
+        .card-container { width: 55px; height: 80px; perspective: 1000px; position: relative; transition: transform 0.3s, box-shadow 0.3s; margin: 3px; }
+        .card-container.highlight { box-shadow: var(--glow); border-radius: 8px; animation: pulse-glow 1.5s infinite alternate; cursor: pointer; z-index: 10; }
+        .card-container.highlight:hover { transform: scale(1.15) translateY(-10px); }
+        @keyframes pulse-glow { from { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.5); } to { box-shadow: 0 0 25px 8px rgba(239, 68, 68, 0.9); } }
+        .card-inner { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+        .card-container.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--font-game); }
+        .card-back { background: linear-gradient(135deg, var(--primary), #991b1b); color: white; border: 2px solid #fff; font-size: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.3);}
+        .card-front { background: white; color: black; transform: rotateY(180deg); border: 2px solid #e2e8f0; }
+        .val { font-size: 1.1rem; font-weight: bold; } .suit { font-size: 1.3rem; }
+        
+        .board-wrapper { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 16px; min-width: 320px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 5px 15px rgba(0,0,0,0.3); }
+        .pyramid-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+        
+        .players-hands-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }
+        .player-hand { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; text-align: center; min-width: 150px; position: relative; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.2s;}
+        .player-hand:hover { transform: translateY(-3px); background: rgba(255,255,255,0.08); }
+        .hand-cards { display: flex; gap: 5px; justify-content: center; margin-top: 8px; min-height: 85px; flex-wrap: wrap;}
+        .stats-badge { background: rgba(0,0,0,0.4); border-radius: 12px; font-size: 0.9rem; padding: 5px 10px; margin-top: 8px; display: inline-block; color: #cbd5e1; border: 1px solid #475569;}
+        
+        button { 
+            background: linear-gradient(135deg, var(--primary), #b91c1c); 
+            color: white; border: none; padding: 12px 20px; border-radius: 10px; 
+            font-size: 1.1rem; font-weight: bold; cursor: pointer; margin: 6px; 
+            font-family: var(--font-game); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); 
+            transition: all 0.2s ease; 
+        }
+        button:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6); }
+        button:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4); }
+        button:disabled { background: #475569; opacity: 0.5; pointer-events: none; box-shadow: none; }
+        
+        .btn-blue { background: linear-gradient(135deg, var(--accent), #1d4ed8); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .btn-blue:hover { box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6); }
+        .btn-green { background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+        .btn-green:hover { box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6); }
+        .btn-dark { background: linear-gradient(135deg, #334155, #0f172a); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        input, select { 
+            width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid #475569; 
+            border-radius: 10px; color: white; margin-bottom: 15px; font-size: 1.1rem; 
+            transition: border 0.3s, box-shadow 0.3s;
+        }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); background: rgba(0,0,0,0.5);}
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--panel-bg); backdrop-filter: blur(20px); padding: 30px; border-radius: 20px; text-align: center; max-width: 380px; width: 90%; transform: scale(0.8) translateY(20px); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 20px 50px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto;}
+        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); }
+        .modal-title { font-size: 1.6rem; margin-bottom: 12px; color: var(--primary); font-family: var(--font-game); text-shadow: 0 2px 4px rgba(0,0,0,0.5);}
+        .modal-body { font-size: 1.1rem; margin-bottom: 25px; line-height: 1.4;}
+        
+        /* Casino Roulette CSS Mejora */
+        .roulette-container { position: relative; width: 220px; height: 220px; margin: 20px auto; }
+        .casino-roulette {
+            width: 100%; height: 100%; border-radius: 50%; border: 8px solid #334155;
+            background: conic-gradient(
+                #ef4444 0deg 171deg, 
+                #0f172a 171deg 342deg, 
+                #10b981 342deg 360deg
+            );
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(0,0,0,0.5);
+        }
+        .roulette-marker {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 30px solid gold; z-index: 10;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.6));
+        }
+    </style>
+</head>
+<body>
+    <div id="event-banner">EVENTO ACTIVO: Ninguno</div>
+    
+    <div id="cefa-container">
+        <div id="cefa-bubble">¡Preparad los hígados, pardillos!</div>
+        <div id="cefa-avatar">
+            <img src="cefa.jpg" alt="Cefa" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=cefa'">
+        </div>
+    </div>
+    
+    <div id="host-controls">
+        <span class="host-badge">👑 PANEL HOST</span><br>
+        <button onclick="socket.emit('togglePause', currentRoomId)">⏸ Pausa / Duelos</button>
+        <button onclick="openVotoPopular()">⚖️ Voto Popular</button>
+    </div>
+
+    <!-- Modales Genéricos -->
+    <div id="game-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title" id="modal-title"></div>
+            <div class="modal-body" id="modal-body"></div>
+            <div id="modal-actions"></div>
+        </div>
+    </div>
+    
+    <!-- Modal Ruleta Let it Ride -->
+    <div id="roulette-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">🎰 ¡Casino Cefa!</div>
+            <div class="modal-body">
+                <p id="roulette-text" style="font-weight:bold; font-size:1.2rem; color: #cbd5e1;"></p>
+                <div class="roulette-container">
+                    <div class="roulette-marker"></div>
+                    <div class="casino-roulette" id="roulette-wheel"></div>
+                </div>
+            </div>
+            <div id="roulette-actions"></div>
+        </div>
+    </div>
+    
+    <!-- Modal de Eventos (Bloqueante) -->
+    <div id="mandatory-event-modal" class="modal-overlay">
+       <div class="modal-content" style="border-color: gold; box-shadow: 0 0 30px rgba(255,215,0,0.3);">
+           <div class="modal-title">📜 ¡NUEVO EVENTO!</div>
+           <div class="modal-body">
+               <h3 id="me-title" style="color: gold; margin-bottom:15px; font-size:1.7rem; text-shadow: 0 2px 5px rgba(0,0,0,0.8);"></h3>
+               <p id="me-desc" style="font-size:1.3rem; line-height: 1.5;"></p>
+           </div>
+           <button class="btn-green" onclick="acceptEvent()" style="width:100%; font-size:1.3rem; padding: 15px;">¡ENTENDIDO, A BEBER!</button>
+       </div>
+    </div>
+
+    <!-- Modal Subastas -->
+    <div id="auction-modal" class="modal-overlay">
+       <div class="modal-content" style="border-color: #8b5cf6; box-shadow: 0 0 30px rgba(139,92,246,0.3);">
+           <div class="modal-title" style="color: #a78bfa;">⚖️ ¡SUBASTA DE CARTA!</div>
+           <div class="modal-body">
+               <div id="auction-card-container" style="display:flex; justify-content:center; margin-bottom:15px;"></div>
+               <p style="font-size: 1.1rem;">Mejor Puja: <strong id="auc-highest" style="color:#ef4444;font-size:1.8rem">0</strong> <br><span style="color:#94a3b8; font-size:0.9rem;">(por <span id="auc-bidder">Nadie</span>)</span></p>
+               <p style="margin-top:10px; font-size:1.3rem; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px;">⏳ Tiempo: <strong id="auc-timer" style="color: gold;">10</strong>s</p>
+           </div>
+           <div style="display:flex; gap:10px; align-items:center;">
+              <input type="number" id="my-bid" min="1" placeholder="Tragos..." style="margin:0; height:100%;">
+              <button class="btn-blue" onclick="placeBid()" style="margin:0; padding: 12px 15px;">PUJAR</button>
+           </div>
+           <p style="font-size:0.9rem; margin-top:15px; color:#94a3b8;">El que más puje se lleva la carta y se bebe sus tragos.</p>
+       </div>
+    </div>
+
+    <!-- Pantallas -->
+    <div id="screen-lobby" class="screen active">
+        <div class="panel">
+            <h1>La Pirámide de Cefa</h1>
+            <input type="text" id="nickname" placeholder="Tu Apodo">
+            <input type="text" id="room-code" value="CEFA1" placeholder="Código Sala">
+            <button onclick="joinRoom()" style="width:100%">Entrar a la Mesa</button>
+            <div id="lobby-wait" style="display:none; margin-top:25px;">
+                <h3 style="margin-bottom:10px;">Jugadores en mesa:</h3>
+                <ul id="lobby-players" style="list-style:none; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px; font-size:1.1rem; line-height: 1.8;"></ul>
+                <button id="btn-start" onclick="startGame()" style="width:100%; display:none; background:var(--accent); margin-top:20px; font-size: 1.2rem;">👑 Iniciar Partida</button>
+                <p id="wait-msg" style="color:#94a3b8; margin-top: 15px;">Esperando a que el Host inicie...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-adivinacion" class="screen">
+        <div class="panel">
+            <h2 id="adiv-player-title" style="color: var(--accent); margin-bottom: 5px;">Cargando...</h2>
+            <p id="adiv-instruction" style="font-size: 1.2rem; margin-bottom: 15px; color: #cbd5e1;">...</p>
+            <div class="players-hands-container"><div class="hand-cards" id="adiv-cards-container"></div></div>
+            <div id="adiv-actions" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px;"></div>
+            <button id="btn-next-phase" class="btn-blue" style="display:none; width:100%; margin-top:20px;" onclick="socket.emit('advancePhase1', currentRoomId)">Siguiente Turno ⏭</button>
+        </div>
+    </div>
+
+    <div id="screen-piramide" class="screen">
+        <div style="text-align:center; margin-bottom: 10px;">
+            <h2 style="font-size: 2.2rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">La Pirámide</h2>
+            <button id="btn-next-pyramid" style="display:none; margin-top:10px;" onclick="socket.emit('revealNextPyramid', currentRoomId)">👑 Destapar Carta</button>
+        </div>
+        
+        <div style="display:flex; justify-content:center; align-items:center; gap: 25px; margin: 20px 0; overflow-x: auto;">
+            <!-- Mazo lateral -->
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div id="side-deck" style="position:relative; width:55px; height:80px; margin-bottom:10px;"></div>
+                <small style="color:#94a3b8; font-weight:bold;">Mazo</small>
+            </div>
+            
+            <!-- Pirámide -->
+            <div class="board-wrapper" id="pyramid-board"></div>
+            
+            <!-- Carta Subasta Fila -->
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div id="auction-column" style="width:55px; height:80px; margin-bottom:10px; display:flex; justify-content:center; align-items:center;"></div>
+                <small style="color:#94a3b8; font-weight:bold;">Subasta</small>
+            </div>
+        </div>
+
+        <h3 style="text-align:center; margin-top: 15px; color: var(--accent);">Manos de Jugadores</h3>
+        <div class="players-hands-container" id="all-hands-container"></div>
+    </div>
+    
+    <!-- Pausa UI -->
+    <div id="screen-paused" class="screen">
+        <div class="panel">
+            <h1 style="color: gold;">JUEGO PAUSADO ⏸</h1>
+            <p style="font-size: 1.2rem; color: #cbd5e1;">Aprovecha para ir al baño o retar a alguien.</p>
+            <h3 style="margin-top:25px; margin-bottom: 15px; color: var(--primary);">⚔️ Retar a Piedra, Papel, Tijera</h3>
+            <div id="duel-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myName = ''; let currentRoomId = ''; let gameState = null; let amIHost = false;
+
+        const SIMBOLOS = {'Oros': '🪙', 'Copas': '🏆', 'Espadas': '⚔️', 'Bastos': '🪵'};
+        const NOMBRES = {1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: 'Sota', 9: 'Caballo', 10: 'Rey'};
+        const PALOS = ['Oros', 'Copas', 'Espadas', 'Bastos'];
+
+        // Audio System
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(freq, type, dur) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.value = freq;
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + dur);
+            osc.stop(audioCtx.currentTime + dur);
+        }
+        function playGlup() { playBeep(300, 'sine', 0.2); setTimeout(()=>playBeep(400, 'sine', 0.2), 150); }
+        function playDrum() { playBeep(100, 'sawtooth', 0.1); setTimeout(()=>playBeep(100, 'sawtooth', 0.1), 100); }
+        function playAlarm() { playBeep(800, 'square', 0.3); setTimeout(()=>playBeep(800, 'square', 0.3), 400); }
+        
+        socket.on('playGlup', playGlup); socket.on('playDrum', playDrum); socket.on('playAlarm', playAlarm);
+
+        function cefaHabla(texto) {
+            const bubble = document.getElementById('cefa-bubble');
+            bubble.innerText = texto; bubble.classList.add('show');
+            setTimeout(() => { bubble.classList.remove('show'); }, 5500); // 5.5 segundos 
+        }
+
+        function showModal(title, bodyHtml, buttonsHtml) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerHTML = bodyHtml;
+            document.getElementById('modal-actions').innerHTML = buttonsHtml;
+            document.getElementById('game-modal').classList.add('active');
+        }
+        function closeModal() { document.getElementById('game-modal').classList.remove('active'); }
+
+        socket.on('cefa_message', (msg) => { cefaHabla(msg); });
+
+        function joinRoom() {
+            myName = document.getElementById('nickname').value.trim();
+            currentRoomId = document.getElementById('room-code').value.trim();
+            if(!myName || !currentRoomId) return alert('Rellena los datos');
+            socket.emit('joinRoom', { name: myName, roomId: currentRoomId });
+            document.querySelector('#screen-lobby input').style.display = 'none';
+            document.querySelectorAll('#screen-lobby input')[1].style.display = 'none';
+            document.querySelector('#screen-lobby button').style.display = 'none';
+            document.getElementById('lobby-wait').style.display = 'block';
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function startGame() { socket.emit('startGame', currentRoomId); }
+
+        socket.on('updateState', (room) => {
+            gameState = room;
+            amIHost = (room.host === myName);
+            document.getElementById('host-controls').style.display = amIHost ? 'block' : 'none';
+            
+            if(room.activeEvent) {
+                document.getElementById('event-banner').style.display = 'block';
+                document.getElementById('event-banner').innerText = `EVENTO ACTIVO: ${room.activeEvent.nombre} - ${room.activeEvent.txt}`;
+            }
+
+            // Gestion de pantallas
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            if(room.isPaused) {
+                document.getElementById('screen-paused').classList.add('active');
+                renderDuelos();
+                return;
+            }
+
+            if(room.state === 'lobby') {
+                document.getElementById('screen-lobby').classList.add('active');
+                const list = document.getElementById('lobby-players'); list.innerHTML = '';
+                room.players.forEach(p => list.innerHTML += `<li>🍺 <strong>${p.name}</strong> ${p.name===room.host?'👑':''}</li>`);
+                if(amIHost) { document.getElementById('btn-start').style.display = 'block'; document.getElementById('wait-msg').style.display = 'none'; }
+            } 
+            else if (room.state === 'phase1') {
+                document.getElementById('screen-adivinacion').classList.add('active');
+                renderPhase1();
+            }
+            else if (room.state === 'pyramid') {
+                document.getElementById('screen-piramide').classList.add('active');
+                renderPyramid(); renderAllHands();
+            }
+        });
+
+        function renderCardHTML(card, isFlipped, extraClass="", onclick="") {
+            const inner = isFlipped ? "card-container flipped" : "card-container";
+            return `<div class="${inner} ${extraClass}" ${onclick ? `onclick="${onclick}"` : ''}>
+                    <div class="card-inner">
+                        <div class="card-back">?</div>
+                        <div class="card-front"><div class="suit">${SIMBOLOS[card.palo]}</div><div class="val">${NOMBRES[card.valor]}</div></div>
+                    </div></div>`;
+        }
+
+        function renderPhase1() {
+            let p = gameState.players[gameState.turnIdx];
+            document.getElementById('adiv-player-title').innerText = `Ronda ${gameState.phase} - Turno de ${p.name}`;
+            let cont = document.getElementById('adiv-cards-container'); cont.innerHTML = '';
+            p.hand.forEach(c => { cont.innerHTML += renderCardHTML(c, c.revealed); });
+            
+            let actions = document.getElementById('adiv-actions'); actions.innerHTML = '';
+            let inst = document.getElementById('adiv-instruction');
+            let nextBtn = document.getElementById('btn-next-phase');
+
+            let targetCard = p.hand[gameState.phase - 1];
+            let isMyTurnToAdvance = (gameState.waitingForNext === myName) || (amIHost && !gameState.players.find(x => x.name === gameState.waitingForNext)?.connected);
+            nextBtn.style.display = (isMyTurnToAdvance && targetCard && targetCard.revealed) ? 'block' : 'none';
+
+            if (p.name !== myName) { inst.innerText = targetCard && targetCard.revealed ? "Resuelto." : "Eligiendo..."; return; }
+            if (targetCard && targetCard.revealed) { inst.innerText = "Resuelto."; return; }
+
+            if(gameState.phase === 1) {
+                inst.innerText = `Adivina el PALO`;
+                PALOS.forEach(palo => { actions.innerHTML += `<button onclick="guess(1, '${palo}')">${SIMBOLOS[palo]} ${palo}</button>`; });
+            } else if (gameState.phase === 2) {
+                inst.innerText = `¿Mayor, menor o igual que ${NOMBRES[p.hand[0].valor]}?`;
+                ['Mayor', 'Menor', 'Igual'].forEach(op => { actions.innerHTML += `<button onclick="guess(2, '${op}')">${op}</button>`; });
+            } else if (gameState.phase === 3) {
+                inst.innerText = `¿Dentro o Fuera?`;
+                ['Dentro', 'Fuera', 'Igual'].forEach(op => { actions.innerHTML += `<button onclick="guess(3, '${op}')">${op}</button>`; });
+            } else if (gameState.phase === 4) {
+                inst.innerText = `Apuesta número exacto`;
+                actions.innerHTML = `<input type="number" id="apuesta-num" min="1" max="10" placeholder="Número 1-10"><button onclick="guess(4)">Apostar</button>`;
+            }
+        }
+
+        function guess(phase, choice) {
+            let betValue = phase === 4 ? document.getElementById('apuesta-num').value : null;
+            socket.emit('guessCard', { roomId: currentRoomId, choice, betValue });
+        }
+
+        socket.on('showSendDrinks', ({ tragos }) => {
+            let options = gameState.players.filter(x => x.name !== myName).map(x => `<button class="btn-blue" style="display:block;width:100%" onclick="sendDrinks('${x.name}', ${tragos})">A ${x.name}</button>`).join('');
+            showModal("¡Acierto!", `<p>Reparte <strong>${tragos} tragos</strong>.</p>`, options);
+        });
+        function sendDrinks(targetName, tragos) { 
+            closeModal(); socket.emit('sendDrinksPhase1', { roomId: currentRoomId, targetName, tragos }); 
+            socket.emit('resolveTurn', {roomId: currentRoomId, playerName: myName});
+        }
+
+        socket.on('showDrinkPenalty', ({ tragos, card }) => {
+            let html = `<button onclick="beberNormal(${tragos})" style="width:100%">Beber ${tragos} tragos</button>
+                        <button class="btn-red" onclick="abrirRuleta(${tragos})" style="width:100%; margin-top:10px;">🎰 Let It Ride (Casino)</button>`;
+            showModal("¡Has fallado!", `<p>Era <strong>${NOMBRES[card.valor]} de ${card.palo}</strong>.</p>`, html);
+        });
+        
+        function beberNormal(tragos) { 
+            closeModal(); playGlup(); 
+            socket.emit('addTragos', {roomId: currentRoomId, playerName: myName, tragos}); 
+            socket.emit('resolveTurn', {roomId: currentRoomId, playerName: myName});
+        }
+        
+        function abrirRuleta(tragosOriginales) {
+            closeModal();
+            let html = `
+                <button class="btn-red" style="width:100%" onclick="tirarRuleta('Rojo', ${tragosOriginales})">Rojo (Se libra)</button>
+                <button class="btn-dark" style="width:100%" onclick="tirarRuleta('Negro', ${tragosOriginales})">Negro (Se libra)</button>
+                <button class="btn-green" style="width:100%" onclick="tirarRuleta('Verde', ${tragosOriginales})">Verde (Manda x3)</button>`;
+            showModal("Elige Color de la Ruleta", "<p>Rojo/Negro (47.5%): Te salvas o bebes doble. Verde (5%): Mandas x3.</p>", html);
+        }
+        function tirarRuleta(color, tragosOriginales) {
+            closeModal(); socket.emit('letItRide', {roomId: currentRoomId, playerName: myName, colorElegido: color, tragosOriginales});
+        }
+
+        socket.on('spinRoulette', ({playerName, colorElegido, resultColor}) => {
+            document.getElementById('roulette-text').innerHTML = `¡<strong>${playerName}</strong> se la juega a <strong>${colorElegido}</strong>!`;
+            document.getElementById('roulette-modal').classList.add('active');
+            let wheel = document.getElementById('roulette-wheel');
+            wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)';
+            
+            setTimeout(() => {
+                wheel.style.transition = 'transform 4.5s cubic-bezier(0.1, 0.8, 0.1, 1)';
+                let deg = 0;
+                if(resultColor === 'Rojo') deg = -85;
+                if(resultColor === 'Negro') deg = -256;
+                if(resultColor === 'Verde') deg = -351;
+                deg -= (360 * 6); // 6 vueltas completas
+                wheel.style.transform = `rotate(${deg}deg)`;
+            }, 50);
+        });
+        
+        socket.on('ruletaFin', ({victoria, resultColor, tragos, playerName}) => {
+            document.getElementById('roulette-modal').classList.remove('active');
+            let msg = victoria ? 
+                `¡SALVAJE! Salió <strong style="color:var(--primary)">${resultColor}</strong>.<br><br>${playerName} ha ganado y manda <strong>${tragos} tragos</strong>.` : 
+                `¡PRINGAO! Salió <strong>${resultColor}</strong>.<br><br>${playerName} ha fallado y se come <strong>${tragos} tragos</strong>.`;
+            let closeBtn = `<button onclick="closeModal(); socket.emit('resolveTurn', {roomId: currentRoomId, playerName: '${playerName}'})" style="width:100%">Continuar</button>`;
+            showModal(victoria ? "¡VICTORIA EPIquísima!" : "¡DERROTA DOLOROSA!", `<p>${msg}</p>`, closeBtn);
+        });
+
+        socket.on('receiveDrinks', ({ senderName, tragos }) => {
+            playGlup(); showModal("¡Pringas!", `<p><strong style="color:var(--primary)">${senderName}</strong> te ha mandado <strong>${tragos} tragos</strong>.</p>`, `<button onclick="closeModal()" style="width:100%">¡Glup glup!</button>`);
+        });
+
+        function renderPyramid() {
+            const pb = document.getElementById('pyramid-board'); pb.innerHTML = '';
+            for(let r=0; r<gameState.pyramidRows; r++) {
+                let rowDiv = document.createElement('div'); rowDiv.className = 'pyramid-row';
+                gameState.pyramid[r].forEach(c => { rowDiv.innerHTML += renderCardHTML(c, c.revealed); });
+                pb.appendChild(rowDiv);
+            }
+            
+            // Side deck stack
+            const sd = document.getElementById('side-deck'); sd.innerHTML = '';
+            let deckCount = gameState.deck.length;
+            for(let i=0; i<Math.min(deckCount, 5); i++) {
+                let offset = i*3;
+                sd.innerHTML += `<div style="position:absolute; top:-${offset}px; left:${offset}px; width:55px; height:80px; background:linear-gradient(135deg, var(--primary), #991b1b); border:2px solid #fff; border-radius:8px; box-shadow:-2px 2px 5px rgba(0,0,0,0.5);"></div>`;
+            }
+
+            // Auction Column
+            const ac = document.getElementById('auction-column'); ac.innerHTML = '';
+            if (gameState.auction && gameState.auction.card) {
+                ac.innerHTML = renderCardHTML(gameState.auction.card, true, 'highlight');
+            } else {
+                 ac.innerHTML = `<div style="width:55px; height:80px; border: 2px dashed rgba(255,255,255,0.2); border-radius:8px;"></div>`;
+            }
+
+            document.getElementById('btn-next-pyramid').style.display = amIHost ? 'inline-block' : 'none';
+            document.getElementById('btn-next-pyramid').disabled = (gameState.pendingSends > 0 || gameState.auction.active);
+        }
+
+        function renderAllHands() {
+            const hc = document.getElementById('all-hands-container'); hc.innerHTML = '';
+            gameState.players.forEach((p) => {
+                let pDiv = document.createElement('div'); pDiv.className = 'player-hand'; 
+                pDiv.innerHTML = `<strong style="font-size:1.1rem">${p.name}</strong><br><span class="stats-badge">🍺 ${p.totalTragos} | 🏅 ${p.hidalgos}</span>`;
+                if(p.hand.length === 0) { 
+                    if(p.name === myName) pDiv.innerHTML += `<br><button class="btn-green" onclick="socket.emit('reglaHidalgo', {roomId: currentRoomId, playerName: myName})" style="margin-top:10px;">¡Hidalgo!</button>`; 
+                } else {
+                    let cardsDiv = document.createElement('div'); cardsDiv.className = 'hand-cards';
+                    p.hand.forEach((c) => {
+                        let extra = c.isHighlighted ? 'highlight' : '';
+                        let oncl = (c.isHighlighted && p.name === myName) ? `clickMyCard('${c.id}', ${c.tragosAsignados})` : '';
+                        cardsDiv.innerHTML += renderCardHTML(c, p.name === myName || c.revealed, extra, oncl);
+                    });
+                    pDiv.appendChild(cardsDiv);
+                }
+                hc.appendChild(pDiv);
+            });
+        }
+        function clickMyCard(cardId, tragos) {
+            let options = gameState.players.filter(x => x.name !== myName).map(x => `<button class="btn-blue" style="display:block;width:100%;margin-bottom:8px;" onclick="sendCardPyr('${x.name}', '${cardId}', ${tragos})">A ${x.name}</button>`).join('');
+            showModal("¡Manda tu carta!", `<p>Pásale esta maldición y <strong>${tragos} tragos</strong> a alguien.</p>`, options);
+        }
+        function sendCardPyr(targetName, cardId, tragos) { closeModal(); socket.emit('sendCardPyramid', { roomId: currentRoomId, fromName: myName, targetName, cardId, tragos }); }
+
+        // Eventos Obligatorios Pop-up
+        socket.on('showMandatoryEvent', (ev) => {
+            document.getElementById('me-title').innerText = ev.nombre;
+            document.getElementById('me-desc').innerText = ev.txt;
+            document.getElementById('mandatory-event-modal').classList.add('active');
+        });
+        function acceptEvent() {
+            document.getElementById('mandatory-event-modal').classList.remove('active');
+            if (amIHost) {
+                socket.emit('startAuctionTimer', currentRoomId);
+            }
+        }
+
+        // Subastas en tiempo real
+        socket.on('startAuction', (auctionData) => {
+            document.getElementById('auction-card-container').innerHTML = renderCardHTML(auctionData.card, true);
+            document.getElementById('auc-highest').innerText = auctionData.highestBid;
+            document.getElementById('auc-bidder').innerText = auctionData.highestBidder || 'Nadie';
+            document.getElementById('auc-timer').innerText = auctionData.timeLeft;
+            document.getElementById('my-bid').value = '';
+            document.getElementById('auction-modal').classList.add('active');
+        });
+        socket.on('auctionUpdate', (data) => {
+            document.getElementById('auc-highest').innerText = data.highestBid;
+            document.getElementById('auc-bidder').innerText = data.highestBidder;
+        });
+        socket.on('auctionTick', (time) => {
+            document.getElementById('auc-timer').innerText = time;
+        });
+        socket.on('auctionEnd', (result) => {
+            document.getElementById('auction-modal').classList.remove('active');
+            if(result && result.winner) {
+                showModal("¡Subasta Finalizada!", `<p><strong style="color:var(--primary)">${result.winner}</strong> se lleva la carta por <strong>${result.bid} tragos</strong>.</p>`, `<button onclick="closeModal()" style="width:100%">Continuar</button>`);
+            } else {
+                showModal("¡Subasta Desierta!", `<p>Nadie quiso la carta. Se pierde en el olvido para siempre.</p>`, `<button onclick="closeModal()" style="width:100%">Continuar</button>`);
+            }
+        });
+        function placeBid() {
+            let val = parseInt(document.getElementById('my-bid').value);
+            let currentHigh = parseInt(document.getElementById('auc-highest').innerText);
+            if(val > currentHigh) {
+                socket.emit('placeBid', { roomId: currentRoomId, playerName: myName, bid: val });
+                document.getElementById('my-bid').value = '';
+            } else {
+                alert('¡Debes pujar más que la apuesta actual!');
+            }
+        }
+
+        // Voto Popular
+        function openVotoPopular() {
+            let options = gameState.players.map(x => `<button onclick="iniciarJuicio('${x.name}')" style="display:block;width:100%">${x.name}</button>`).join('');
+            showModal("Juicio Cefa", "<p>¿A quién sentamos en el banquillo?</p>", options);
+        }
+        function iniciarJuicio(target) { closeModal(); socket.emit('iniciarJuicio', {roomId: currentRoomId, targetName: target}); }
+        socket.on('startVoteUI', ({targetName}) => {
+            playAlarm();
+            let html = `<button class="btn-red" style="width:100%; margin-bottom:10px;" onclick="votar('culpable')">Culpable 🍺</button> <button class="btn-blue" style="width:100%" onclick="votar('inocente')">Inocente 😇</button>`;
+            showModal(`Juicio a ${targetName}`, "¿Ha incumplido las reglas de Cefa?", html);
+        });
+        function votar(v) { document.getElementById('modal-actions').innerHTML="<p style='color:#cbd5e1;'>Esperando al resto de la mesa...</p>"; socket.emit('castVote', {roomId: currentRoomId, playerName: myName, voto: v}); }
+        socket.on('closeVoteUI', closeModal);
+
+        // Duelos Visuales
+        function renderDuelos() {
+            let list = document.getElementById('duel-list'); list.innerHTML = '';
+            gameState.players.filter(x=>x.name!==myName).forEach(x => {
+                list.innerHTML += `<button onclick="retarDuel('${x.name}')" style="display:block;width:100%">Retar a ${x.name}</button>`;
+            });
+        }
+        function retarDuel(targetName) { socket.emit('challengeDuel', {roomId: currentRoomId, fromName: myName, targetName}); }
+        
+        socket.on('showDuelUI', ({duelId, opponent}) => {
+            let html = `
+                <button class="btn-dark" style="width:100%; margin-bottom:8px;" onclick="enviarDuelo('${duelId}','Piedra')">🗿 Piedra</button>
+                <button class="btn-dark" style="width:100%; margin-bottom:8px;" onclick="enviarDuelo('${duelId}','Papel')">📄 Papel</button>
+                <button class="btn-dark" style="width:100%; margin-bottom:8px;" onclick="enviarDuelo('${duelId}','Tijera')">✂️ Tijera</button>`;
+            showModal(`Duelo vs ${opponent}`, "¡Piedra, papel, tijera! El que pierda bebe 3.", html);
+        });
+        function enviarDuelo(duelId, choice) { document.getElementById('modal-actions').innerHTML="<p style='color:#cbd5e1;'>Esperando a tu rival...</p>"; socket.emit('duelChoice', {roomId: currentRoomId, playerName: myName, duelId, choice}); }
+        
+        socket.on('duelResult', ({p1, p1Choice, p2, p2Choice, loser, resMsg}) => {
+            function getSymbol(choice) { if(choice==='Piedra') return '🗿'; if(choice==='Papel') return '📄'; if(choice==='Tijera') return '✂️'; return '❓'; }
+            let html = `
+                <div style="display:flex; justify-content:space-around; font-size:1.8rem; margin:20px 0; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px;">
+                    <div style="text-align:center;"><strong style="font-size:1.1rem; color:var(--accent);">${p1}</strong><br>${getSymbol(p1Choice)}</div>
+                    <div style="align-self:center; font-size:1.2rem; font-weight:bold; color:#cbd5e1;">VS</div>
+                    <div style="text-align:center;"><strong style="font-size:1.1rem; color:var(--primary);">${p2}</strong><br>${getSymbol(p2Choice)}</div>
+                </div>
+                <p style="color:var(--primary); font-weight:bold; font-size:1.3rem; margin-bottom:20px;">${resMsg}</p>
+                <button onclick="closeModal()" style="width:100%">Continuar</button>
+            `;
+            showModal("¡Resultado del Duelo!", "", html);
+        });
+    </script>
+</body>
+</html>
